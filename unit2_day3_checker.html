@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unit 2 Day 3 — Writing Equations Checker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F4F1EC;
+  --card: #FFFFFF;
+  --header: #1A2332;
+  --accent: #1B6B93;
+  --ok: #3A7D44;
+  --warn: #C4841D;
+  --err: #B33A3A;
+  --text: #2C2C2C;
+  --muted: #6B7280;
+  --border: #D1D5DB;
+  --radius: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+/* Header */
+.header {
+  background: var(--header);
+  color: #fff;
+  padding: 16px 20px 12px;
+  position: sticky; top: 0; z-index: 100;
+}
+.header h1 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+.nav-row {
+  display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+}
+.nav-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.15);
+  transition: all 0.2s;
+}
+.nav-badge.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.nav-badge.complete {
+  background: var(--ok);
+  color: #fff;
+  border-color: var(--ok);
+}
+.nav-badge.redirected {
+  background: var(--warn);
+  color: #fff;
+  border-color: var(--warn);
+}
+/* Progress bar */
+.progress-bar {
+  height: 4px; background: rgba(255,255,255,0.15);
+  border-radius: 2px; margin-top: 10px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: var(--ok);
+  transition: width 0.4s ease;
+}
+/* Main content */
+.main { max-width: 640px; margin: 0 auto; padding: 20px 16px 80px; }
+/* Card */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 24px 20px;
+  margin-bottom: 20px;
+}
+.card-header {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px; font-weight: 500;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.card-problem {
+  font-size: 16px; font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+/* Steps */
+.step {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: #F8F9FA;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  transition: opacity 0.3s;
+}
+.step.locked {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.step.passed {
+  border-color: var(--ok);
+  background: #F0F9F1;
+}
+.step.passed .step-result { color: var(--ok); font-weight: 500; }
+.step-label {
+  font-size: 13px; font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+.step-prompt {
+  font-size: 15px;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+.step-result {
+  font-size: 14px;
+  margin-top: 8px;
+  min-height: 20px;
+}
+/* Inputs */
+.input-row {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+.input-row label {
+  font-size: 14px; color: var(--muted); white-space: nowrap;
+}
+.input-field {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  padding: 8px 12px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  width: 100px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-field:focus { border-color: var(--accent); }
+.input-field.correct { border-color: var(--ok); background: #F0F9F1; }
+.input-field.wrong { border-color: var(--err); }
+.check-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px; font-weight: 600;
+  padding: 8px 20px;
+  border: none; border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.check-btn:hover { background: #155A7A; }
+.check-btn:disabled {
+  background: var(--border);
+  cursor: not-allowed;
+}
+/* Feedback */
+.feedback {
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 8px;
+  display: none;
+}
+.feedback.show { display: block; }
+.feedback.ok { background: #E8F5E9; color: var(--ok); }
+.feedback.err { background: #FDECEA; color: var(--err); }
+.feedback.warn { background: #FFF3E0; color: var(--warn); }
+/* Redirect banner */
+.redirect-banner {
+  display: none;
+  background: #FFF3E0;
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #7A5000;
+}
+.redirect-banner.show { display: block; }
+.redirect-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600;
+  padding: 6px 14px;
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--warn);
+  cursor: pointer;
+  margin-top: 8px;
+}
+/* Equation display */
+.eq-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  text-align: center;
+  padding: 10px;
+  background: #F0F4F8;
+  border-radius: 8px;
+  margin: 8px 0;
+}
+/* Hidden */
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Unit 2, Day 3 — Writing Equations</h1>
+  <div class="nav-row" id="navRow"></div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+</div>
+
+<div class="main" id="mainContent"></div>
+
+<script>
+// ===== PROBLEM DATA =====
+const PROBLEMS = [
+  {
+    id: "P-1",
+    type: "slope-point",
+    text: "Slope m = −3, passes through (2, 4). Write in slope-intercept form.",
+    m: {n:-3, d:1},
+    point: [2, 4],
+    b: {n:10, d:1}
+  },
+  {
+    id: "P-2",
+    type: "two-points",
+    text: "Passes through (0, 5) and (4, −3). Write in slope-intercept form.",
+    p1: [0, 5], p2: [4, -3],
+    m: {n:-2, d:1},
+    b: {n:5, d:1}
+  },
+  {
+    id: "P-3",
+    type: "slope-point",
+    text: "Slope m = 2/5, passes through (−5, 1). Write in slope-intercept form.",
+    m: {n:2, d:5},
+    point: [-5, 1],
+    b: {n:3, d:1}
+  },
+  {
+    id: "P-4",
+    type: "two-points",
+    text: "Passes through (2, −1) and (−4, 5). Write in slope-intercept form.",
+    p1: [2, -1], p2: [-4, 5],
+    m: {n:-1, d:1},
+    b: {n:1, d:1}
+  },
+  {
+    id: "P-5",
+    type: "two-points",
+    text: "Passes through (−3, −2) and (6, 4). Write in slope-intercept form.",
+    p1: [-3, -2], p2: [6, 4],
+    m: {n:2, d:3},
+    b: {n:0, d:1}
+  },
+  {
+    id: "P-6",
+    type: "direct",
+    text: "Slope m = 4, y-intercept = −3. Write in slope-intercept form.",
+    m: {n:4, d:1},
+    b: {n:-3, d:1}
+  },
+  {
+    id: "P-7",
+    type: "identify",
+    text: "The equation y − 3 = ½(x + 4) is in point-slope form. Identify the slope and the point (x₁, y₁). Then convert to slope-intercept form.",
+    m: {n:1, d:2},
+    point: [-4, 3],
+    b: {n:5, d:1}
+  },
+  {
+    id: "P-8",
+    type: "two-points",
+    text: "Passes through (1, 7) and (3, 11). Write in both point-slope and slope-intercept form.",
+    p1: [1, 7], p2: [3, 11],
+    m: {n:2, d:1},
+    b: {n:5, d:1}
+  }
+];
+
+// ===== STATE =====
+let currentIdx = 0;
+const state = PROBLEMS.map(() => ({
+  status: "pending", // pending | complete | redirected
+  stepsDone: [],
+  attempts: {}
+}));
+
+// ===== FRACTION UTILITIES =====
+function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while(b){[a,b]=[b,a%b];} return a; }
+function simplify(n, d) {
+  if (d === 0) return {n:NaN, d:1};
+  if (n === 0) return {n:0, d:1};
+  const s = d < 0 ? -1 : 1;
+  n *= s; d *= s;
+  const g = gcd(n, d);
+  return {n: n/g, d: d/g};
+}
+function fracEq(a, b) {
+  const sa = simplify(a.n, a.d);
+  const sb = simplify(b.n, b.d);
+  return sa.n === sb.n && sa.d === sb.d;
+}
+function parseFrac(str) {
+  str = str.trim().replace(/\s/g, '').replace(/−/g, '-');
+  if (str === '') return null;
+  // Handle fraction notation
+  if (str.includes('/')) {
+    const parts = str.split('/');
+    if (parts.length !== 2) return null;
+    const n = parseInt(parts[0]);
+    const d = parseInt(parts[1]);
+    if (isNaN(n) || isNaN(d) || d === 0) return null;
+    return simplify(n, d);
+  }
+  // Handle decimal
+  const num = parseFloat(str);
+  if (isNaN(num)) return null;
+  // Convert to fraction
+  if (Number.isInteger(num)) return {n: num, d: 1};
+  const s = str.replace('-','');
+  const dec = s.includes('.') ? s.split('.')[1].length : 0;
+  const d = Math.pow(10, dec);
+  return simplify(Math.round(num * d), d);
+}
+function fracStr(f) {
+  if (f.d === 1) return `${f.n}`;
+  return `${f.n}/${f.d}`;
+}
+function fracDec(f) { return f.n / f.d; }
+
+// ===== UI BUILDERS =====
+function buildNav() {
+  const nav = document.getElementById('navRow');
+  nav.innerHTML = '';
+  PROBLEMS.forEach((p, i) => {
+    const badge = document.createElement('span');
+    badge.className = 'nav-badge' + (i === currentIdx ? ' active' : '') +
+      (state[i].status === 'complete' ? ' complete' : '') +
+      (state[i].status === 'redirected' ? ' redirected' : '');
+    badge.textContent = p.id;
+    badge.onclick = () => { currentIdx = i; render(); };
+    nav.appendChild(badge);
+  });
+  const done = state.filter(s => s.status !== 'pending').length;
+  document.getElementById('progressFill').style.width = `${(done/PROBLEMS.length)*100}%`;
+}
+
+function render() {
+  buildNav();
+  const p = PROBLEMS[currentIdx];
+  const s = state[currentIdx];
+  const main = document.getElementById('mainContent');
+
+  let html = `<div class="card">
+    <div class="card-header">${p.id}</div>
+    <div class="card-problem">${p.text}</div>`;
+
+  switch(p.type) {
+    case 'slope-point': html += buildSlopePoint(p, s, currentIdx); break;
+    case 'two-points': html += buildTwoPoints(p, s, currentIdx); break;
+    case 'direct': html += buildDirect(p, s, currentIdx); break;
+    case 'identify': html += buildIdentify(p, s, currentIdx); break;
+  }
+  html += `</div>`;
+  main.innerHTML = html;
+  attachListeners();
+}
+
+function buildSlopePoint(p, s, idx) {
+  const step1Done = s.stepsDone.includes('slope');
+  const step2Done = s.stepsDone.includes('equation');
+  return `
+    <div class="step ${step1Done ? 'passed' : ''}" id="step-slope">
+      <div class="step-label">Step 1 — Slope</div>
+      <div class="step-prompt">The slope is given: m = ${fracStr(p.m)}</div>
+      <div class="step-result" style="color:var(--ok)">✓ Slope confirmed</div>
+    </div>
+    <div class="step ${step2Done ? 'passed' : ''}" id="step-eq">
+      <div class="step-label">Step 2 — Slope-Intercept Form</div>
+      <div class="step-prompt">Substitute into point-slope, then convert to y = mx + b.</div>
+      <div class="input-row">
+        <label>y =</label>
+        <input class="input-field ${step2Done ? 'correct' : ''}" id="inp-m" placeholder="m" style="width:80px" ${step2Done ? 'disabled' : ''}>
+        <label>x +</label>
+        <input class="input-field ${step2Done ? 'correct' : ''}" id="inp-b" placeholder="b" style="width:80px" ${step2Done ? 'disabled' : ''}>
+        <button class="check-btn" id="btn-eq" ${step2Done ? 'disabled' : ''}>Check</button>
+      </div>
+      <div class="feedback" id="fb-eq"></div>
+      <div class="redirect-banner" id="rd-eq">
+        ✋ Bring your work to your teacher and show them this step.
+        <br><button class="redirect-btn" onclick="resolveRedirect(${idx},'equation')">Teacher helped — continue</button>
+      </div>
+      ${step2Done ? `<div class="step-result">✓ y = ${fracStr(p.m)}x + ${p.b.n < 0 ? '(' + fracStr(p.b) + ')' : fracStr(p.b)}</div>` : ''}
+    </div>`;
+}
+
+function buildTwoPoints(p, s, idx) {
+  const step1Done = s.stepsDone.includes('slope');
+  const step2Done = s.stepsDone.includes('equation');
+  return `
+    <div class="step ${step1Done ? 'passed' : ''}" id="step-slope">
+      <div class="step-label">Step 1 — Find the Slope</div>
+      <div class="step-prompt">Use the slope formula: m = (y₂ − y₁) / (x₂ − x₁)</div>
+      <div class="input-row">
+        <label>m =</label>
+        <input class="input-field ${step1Done ? 'correct' : ''}" id="inp-slope" placeholder="slope" style="width:100px" ${step1Done ? 'disabled' : ''}>
+        <button class="check-btn" id="btn-slope" ${step1Done ? 'disabled' : ''}>Check</button>
+      </div>
+      <div class="feedback" id="fb-slope"></div>
+      <div class="redirect-banner" id="rd-slope">
+        ✋ Bring your work to your teacher and show them this step.
+        <br><button class="redirect-btn" onclick="resolveRedirect(${idx},'slope')">Teacher helped — continue</button>
+      </div>
+      ${step1Done ? `<div class="step-result">✓ m = ${fracStr(p.m)}</div>` : ''}
+    </div>
+    <div class="step ${!step1Done ? 'locked' : ''} ${step2Done ? 'passed' : ''}" id="step-eq">
+      <div class="step-label">Step 2 — Slope-Intercept Form</div>
+      <div class="step-prompt">Pick a point, substitute into point-slope form, then convert to y = mx + b.</div>
+      <div class="input-row">
+        <label>y =</label>
+        <input class="input-field ${step2Done ? 'correct' : ''}" id="inp-m" placeholder="m" style="width:80px" ${step2Done ? 'disabled' : ''}>
+        <label>x +</label>
+        <input class="input-field ${step2Done ? 'correct' : ''}" id="inp-b" placeholder="b" style="width:80px" ${step2Done ? 'disabled' : ''}>
+        <button class="check-btn" id="btn-eq" ${step2Done ? 'disabled' : ''}>Check</button>
+      </div>
+      <div class="feedback" id="fb-eq"></div>
+      <div class="redirect-banner" id="rd-eq">
+        ✋ Bring your work to your teacher and show them this step.
+        <br><button class="redirect-btn" onclick="resolveRedirect(${idx},'equation')">Teacher helped — continue</button>
+      </div>
+      ${step2Done ? `<div class="step-result">✓ y = ${fracStr(p.m)}x + ${p.b.n < 0 ? '(' + fracStr(p.b) + ')' : fracStr(p.b)}</div>` : ''}
+    </div>`;
+}
+
+function buildDirect(p, s, idx) {
+  const step1Done = s.stepsDone.includes('equation');
+  return `
+    <div class="step ${step1Done ? 'passed' : ''}" id="step-eq">
+      <div class="step-label">Write the Equation</div>
+      <div class="step-prompt">You have both slope and y-intercept. Write y = mx + b directly.</div>
+      <div class="input-row">
+        <label>y =</label>
+        <input class="input-field ${step1Done ? 'correct' : ''}" id="inp-m" placeholder="m" style="width:80px" ${step1Done ? 'disabled' : ''}>
+        <label>x +</label>
+        <input class="input-field ${step1Done ? 'correct' : ''}" id="inp-b" placeholder="b" style="width:80px" ${step1Done ? 'disabled' : ''}>
+        <button class="check-btn" id="btn-eq" ${step1Done ? 'disabled' : ''}>Check</button>
+      </div>
+      <div class="feedback" id="fb-eq"></div>
+      <div class="redirect-banner" id="rd-eq">
+        ✋ Bring your work to your teacher and show them this step.
+        <br><button class="redirect-btn" onclick="resolveRedirect(${idx},'equation')">Teacher helped — continue</button>
+      </div>
+      ${step1Done ? `<div class="step-result">✓ y = ${fracStr(p.m)}x + ${p.b.n < 0 ? '(' + fracStr(p.b) + ')' : fracStr(p.b)}</div>` : ''}
+    </div>`;
+}
+
+function buildIdentify(p, s, idx) {
+  const step1Done = s.stepsDone.includes('identify');
+  const step2Done = s.stepsDone.includes('equation');
+  return `
+    <div class="step ${step1Done ? 'passed' : ''}" id="step-id">
+      <div class="step-label">Step 1 — Identify Slope and Point</div>
+      <div class="step-prompt">From y − 3 = ½(x + 4), read off m, x₁, and y₁.</div>
+      <div class="eq-display">y − y₁ = m(x − x₁)</div>
+      <div class="input-row" style="margin-top:10px">
+        <label>m =</label>
+        <input class="input-field ${step1Done ? 'correct' : ''}" id="inp-id-m" placeholder="slope" style="width:80px" ${step1Done ? 'disabled' : ''}>
+        <label>x₁ =</label>
+        <input class="input-field ${step1Done ? 'correct' : ''}" id="inp-id-x" placeholder="x₁" style="width:70px" ${step1Done ? 'disabled' : ''}>
+        <label>y₁ =</label>
+        <input class="input-field ${step1Done ? 'correct' : ''}" id="inp-id-y" placeholder="y₁" style="width:70px" ${step1Done ? 'disabled' : ''}>
+        <button class="check-btn" id="btn-id" ${step1Done ? 'disabled' : ''}>Check</button>
+      </div>
+      <div class="feedback" id="fb-id"></div>
+      <div class="redirect-banner" id="rd-id">
+        ✋ Bring your work to your teacher and show them this step.
+        <br><button class="redirect-btn" onclick="resolveRedirect(${idx},'identify')">Teacher helped — continue</button>
+      </div>
+      ${step1Done ? `<div class="step-result">✓ m = ${fracStr(p.m)}, point = (${p.point[0]}, ${p.point[1]})</div>` : ''}
+    </div>
+    <div class="step ${!step1Done ? 'locked' : ''} ${step2Done ? 'passed' : ''}" id="step-eq">
+      <div class="step-label">Step 2 — Convert to Slope-Intercept</div>
+      <div class="step-prompt">Distribute and simplify to get y = mx + b.</div>
+      <div class="input-row">
+        <label>y =</label>
+        <input class="input-field ${step2Done ? 'correct' : ''}" id="inp-m" placeholder="m" style="width:80px" ${step2Done ? 'disabled' : ''}>
+        <label>x +</label>
+        <input class="input-field ${step2Done ? 'correct' : ''}" id="inp-b" placeholder="b" style="width:80px" ${step2Done ? 'disabled' : ''}>
+        <button class="check-btn" id="btn-eq" ${step2Done ? 'disabled' : ''}>Check</button>
+      </div>
+      <div class="feedback" id="fb-eq"></div>
+      <div class="redirect-banner" id="rd-eq">
+        ✋ Bring your work to your teacher and show them this step.
+        <br><button class="redirect-btn" onclick="resolveRedirect(${idx},'equation')">Teacher helped — continue</button>
+      </div>
+      ${step2Done ? `<div class="step-result">✓ y = ${fracStr(p.m)}x + ${fracStr(p.b)}</div>` : ''}
+    </div>`;
+}
+
+// ===== EVENT HANDLING =====
+function attachListeners() {
+  const p = PROBLEMS[currentIdx];
+  const s = state[currentIdx];
+
+  // Slope check (two-points type)
+  const btnSlope = document.getElementById('btn-slope');
+  if (btnSlope && !s.stepsDone.includes('slope')) {
+    btnSlope.onclick = () => checkSlope(currentIdx);
+    const inp = document.getElementById('inp-slope');
+    if (inp) inp.onkeydown = e => { if (e.key === 'Enter') checkSlope(currentIdx); };
+  }
+
+  // Equation check
+  const btnEq = document.getElementById('btn-eq');
+  if (btnEq && !s.stepsDone.includes('equation')) {
+    btnEq.onclick = () => checkEquation(currentIdx);
+    ['inp-m','inp-b'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.onkeydown = e => { if (e.key === 'Enter') checkEquation(currentIdx); };
+    });
+  }
+
+  // Identify check (P-7)
+  const btnId = document.getElementById('btn-id');
+  if (btnId && !s.stepsDone.includes('identify')) {
+    btnId.onclick = () => checkIdentify(currentIdx);
+    ['inp-id-m','inp-id-x','inp-id-y'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.onkeydown = e => { if (e.key === 'Enter') checkIdentify(currentIdx); };
+    });
+  }
+}
+
+function checkSlope(idx) {
+  const p = PROBLEMS[idx];
+  const s = state[idx];
+  const key = 'slope';
+  if (!s.attempts[key]) s.attempts[key] = 0;
+  s.attempts[key]++;
+
+  const inp = document.getElementById('inp-slope');
+  const fb = document.getElementById('fb-slope');
+  const rd = document.getElementById('rd-slope');
+  const val = parseFrac(inp.value);
+
+  if (!val) {
+    showFeedback(fb, 'err', 'Enter a number or fraction (like -2/3).');
+    return;
+  }
+
+  if (fracEq(val, p.m)) {
+    s.stepsDone.push('slope');
+    render();
+    return;
+  }
+
+  // Diagnostic feedback
+  inp.classList.add('wrong');
+  setTimeout(() => inp.classList.remove('wrong'), 600);
+
+  if (s.attempts[key] === 1) {
+    // Check sign error
+    if (fracEq(val, {n: -p.m.n, d: p.m.d})) {
+      showFeedback(fb, 'err', 'Check your signs. Remember: subtract in the same order for top and bottom.');
+    } else if (fracEq(val, {n: p.m.d, d: p.m.n})) {
+      showFeedback(fb, 'err', 'That looks flipped. Slope is rise/run = (y₂ − y₁)/(x₂ − x₁).');
+    } else {
+      showFeedback(fb, 'err', 'Not quite. Use m = (y₂ − y₁) / (x₂ − x₁). Show your work on your whiteboard.');
+    }
+  } else if (s.attempts[key] === 2) {
+    showFeedback(fb, 'err', 'Double-check your subtraction in the numerator and denominator.');
+  } else {
+    showFeedback(fb, 'warn', '');
+    rd.classList.add('show');
+  }
+}
+
+function checkEquation(idx) {
+  const p = PROBLEMS[idx];
+  const s = state[idx];
+  const key = 'equation';
+  if (!s.attempts[key]) s.attempts[key] = 0;
+  s.attempts[key]++;
+
+  const inpM = document.getElementById('inp-m');
+  const inpB = document.getElementById('inp-b');
+  const fb = document.getElementById('fb-eq');
+  const rd = document.getElementById('rd-eq');
+
+  const mVal = parseFrac(inpM.value);
+  const bVal = parseFrac(inpB.value);
+
+  if (!mVal || !bVal) {
+    showFeedback(fb, 'err', 'Enter values for both m and b (use fractions like 2/3 if needed).');
+    return;
+  }
+
+  const mOk = fracEq(mVal, p.m);
+  const bOk = fracEq(bVal, p.b);
+
+  if (mOk && bOk) {
+    s.stepsDone.push('equation');
+    s.status = 'complete';
+    render();
+    // Auto-advance after brief delay
+    setTimeout(() => {
+      if (currentIdx < PROBLEMS.length - 1) {
+        const next = state.findIndex((st, i) => i > currentIdx && st.status === 'pending');
+        if (next !== -1) { currentIdx = next; render(); }
+      }
+    }, 800);
+    return;
+  }
+
+  [inpM, inpB].forEach(el => { el.classList.add('wrong'); setTimeout(() => el.classList.remove('wrong'), 600); });
+
+  if (s.attempts[key] === 1) {
+    if (mOk && !bOk) {
+      showFeedback(fb, 'err', 'Slope is correct. Check your b — did you distribute m correctly and then add y₁ to both sides?');
+    } else if (!mOk && bOk) {
+      showFeedback(fb, 'err', 'The y-intercept is correct, but check your slope.');
+    } else {
+      showFeedback(fb, 'err', 'Check both values. Start with point-slope form, distribute, then simplify.');
+    }
+  } else if (s.attempts[key] === 2) {
+    showFeedback(fb, 'err', 'Try again. Write out each step: point-slope → distribute → add y₁ to both sides.');
+  } else {
+    showFeedback(fb, 'warn', '');
+    rd.classList.add('show');
+  }
+}
+
+function checkIdentify(idx) {
+  const p = PROBLEMS[idx];
+  const s = state[idx];
+  const key = 'identify';
+  if (!s.attempts[key]) s.attempts[key] = 0;
+  s.attempts[key]++;
+
+  const inpM = document.getElementById('inp-id-m');
+  const inpX = document.getElementById('inp-id-x');
+  const inpY = document.getElementById('inp-id-y');
+  const fb = document.getElementById('fb-id');
+  const rd = document.getElementById('rd-id');
+
+  const mVal = parseFrac(inpM.value);
+  const xVal = parseFrac(inpX.value);
+  const yVal = parseFrac(inpY.value);
+
+  if (!mVal || !xVal || !yVal) {
+    showFeedback(fb, 'err', 'Fill in all three values.');
+    return;
+  }
+
+  const mOk = fracEq(mVal, p.m);
+  const xOk = (xVal.n / xVal.d) === p.point[0];
+  const yOk = (yVal.n / yVal.d) === p.point[1];
+
+  if (mOk && xOk && yOk) {
+    s.stepsDone.push('identify');
+    render();
+    return;
+  }
+
+  [inpM, inpX, inpY].forEach(el => { el.classList.add('wrong'); setTimeout(() => el.classList.remove('wrong'), 600); });
+
+  if (s.attempts[key] === 1) {
+    if (!xOk && yOk) {
+      showFeedback(fb, 'err', 'Watch the sign on x₁. The form says (x − x₁), but the equation has (x + 4). What value of x₁ makes x − x₁ = x + 4?');
+    } else if (xOk && !yOk) {
+      showFeedback(fb, 'err', 'Check y₁. The form says y − y₁, and the equation has y − 3.');
+    } else {
+      showFeedback(fb, 'err', 'Compare y − y₁ = m(x − x₁) to y − 3 = ½(x + 4). Match each part carefully.');
+    }
+  } else if (s.attempts[key] === 2) {
+    showFeedback(fb, 'err', 'Key insight: (x + 4) is the same as (x − (−4)), so x₁ = −4.');
+  } else {
+    showFeedback(fb, 'warn', '');
+    rd.classList.add('show');
+  }
+}
+
+function showFeedback(el, type, msg) {
+  el.className = `feedback show ${type}`;
+  el.textContent = msg;
+}
+
+function resolveRedirect(idx, step) {
+  const s = state[idx];
+  s.stepsDone.push(step);
+  if (step === 'equation') s.status = 'redirected';
+  render();
+}
+
+// ===== INIT =====
+render();
+</script>
+</body>
+</html>
